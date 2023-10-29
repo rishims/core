@@ -7,7 +7,7 @@ The NHIS is a household survey that uses a multistage probability sampling desig
 
 The code and result files in this folder pre-process (clean, mine, and manage) raw data extracts from the [NHIS]([url](https://www.cdc.gov/nchs/nhis/data-questionnaires-documentation.htm)https://www.cdc.gov/nchs/nhis/data-questionnaires-documentation.htm), perform logsitic regression on the data to determine trends in healthcare access and utilization from 1999-2021, and then plot the results stratified by race.
 
-These results are part of a larger ongoing project to look at broader trends in mortality and healthcare access and utilization by racial groups, in conjucntion with other datasets from sources such as the [NDI](url) and [CDC WONDER]((https://wonder.cdc.gov/)https://wonder.cdc.gov/) (code for these analyses is still ongoing and theefore has not been made available here, though the preliminary results/figures are available in this folder).
+These results are part of a larger ongoing project to look at broader trends in mortality and healthcare access and utilization by racial groups, in conjucntion with other datasets from sources such as the [NDI](url) and [CDC WONDER](https://wonder.cdc.gov/) (code for these analyses is still ongoing and theefore has not been made available here, though the preliminary results/figures are available in this folder).
 
 ## Listen to Immune Symptoms and Treatment Experience Now (LISTEN)
 
