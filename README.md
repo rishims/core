@@ -11,7 +11,7 @@ These results are part of a larger ongoing project to look at broader trends in 
 
 ## Listen to Immune Symptoms and Treatment Experience Now (LISTEN)
 
-[LISTEN](https://medicine.yale.edu/ycci/listen-study/) is a study that seeks to research long COVID and vaccine-related conditions by fostering sustained dialogue between an international online community of individuals suffering from these illnesses.
+[LISTEN](https://medicine.yale.edu/ycci/listen-study/) is a study that seeks to research long COVID and vaccine-related conditions by fostering sustained dialogue between researchers and an international online community of individuals suffering from these illnesses.
 
 The code and result files in this folder pre-process (clean, mine, and manage) data extracts from LISTEN participant surveys and perform various descriptive and statistical analyses on the data to produce infromative visualizations. Please note that since some of the code is still being refined by our team, specifically code related to the machine learning model and clustering algorithm, this code is not available here but the preliminary results/figures from this analysis can be found in this folder.
 
