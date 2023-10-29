@@ -1,5 +1,5 @@
 # CORE
-This repository contains code and results related to projects that I have produced/contributed to at the Center for Outcomes Research &amp; Evaluation at the Yale New Haven Hospital. Please note that not all results will be accompanied by their corresponding code as this cannot be made available at this time due to various CORE data-protection regulations and team agreements. 
+This repository contains code and results related to projects that I have produced/contributed to at the Center for Outcomes Research &amp; Evaluation at the Yale New Haven Hospital. Please note that not all the results present here are currently accompanied by their corresponding code as some projects have stipulations that prevent the sharing of code until the analyses are complete.
 
 ## National Health Interview Survey (NHIS):
 
