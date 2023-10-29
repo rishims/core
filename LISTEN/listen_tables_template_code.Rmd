@@ -1,0 +1,359 @@
+---
+title: "listen_tables_template_code"
+author: "Rishi Shah"
+date: "August 7, 2023"
+output: html_document
+---
+
+load necessary libraries
+```{r}
+library(gt)
+library(gtsummary)
+library(webshot2)
+library(knitr)
+library(dplyr)
+library(tidyr)
+library(data.table)
+```
+
+template code to generate demographics and socioeconomic characteristics table
+```{r}
+# recode and factor marital status, employment, and income variables
+# note, throughout this code, replace 'xxx' with the name of the dataframe you are using
+xxx$nonmed_maritalstatus <- recode(xxx$nonmed_maritalstatus, "'' = NA")
+xxx$nonmed_employedprecovid <- recode(xxx$nonmed_employedprecovid, "'' = NA")
+xxx$nonmed_annualincome <- factor(xxx$nonmed_annualincome, levels = c(
+  "Less than $10,000",
+  "$10,000 to $35,000",
+  "$35,000 to less than $50,000",
+  "$50,000 to less than $75,000",
+  "$75,000 or more",
+  "Prefer not to answer"
+))
+
+# generate table for demographics and socioeconomic characteristics
+t1 <- tbl_summary(
+  data = xxx, 
+  statistic = list(
+    age ~ "{median} ({p25}-{p75})",
+    gender ~ "{n} ({p})",
+    race_ethnicity ~ "{n} ({p})",
+    country ~ "{n} ({p})",
+    nonmed_maritalstatus ~ "{n} ({p})",
+    nonmed_employedprecovid ~ "{n} ({p})",
+    nonmed_annualincome ~ "{n} ({p})"),
+  label = list(
+    age ~ "Age (y)",
+    gender ~ "Gender",
+    race_ethnicity ~ "Race/Ethnicity",
+    country ~ "Country of residence",
+    nonmed_maritalstatus ~ "Marital Status",
+    nonmed_employedprecovid ~ "Employed pre-pandemic",
+    nonmed_annualincome ~ "Pre-pandemic annual household income"),
+  missing_text = "Missing",
+  include = c(age, gender, race_ethnicity, country, 
+              nonmed_maritalstatus, nonmed_employedprecovid, nonmed_annualincome)
+) %>%
+  modify_footnote(all_stat_cols() ~ "median (IQR) for Age; n/N, % for all other variables") %>%
+  modify_caption("Table 1. Participant demographic and socioeconmic characteristics")
+
+# convert t1 to exportable format
+export_table1 <- as_gt(t1)
+
+# export table to Word
+file_path <- "xxx"
+gtsave(export_table1, file = file_path)
+```
+
+
+template code to generate index vaccination (PVS) and index infection (LC) tables
+```{r}
+# index vaccination for PVS
+# clean vax_type variable to include only complete responses
+xxx$index_vax_type <- recode(xxx$index_vax_type, "c('', 'false') = NA")
+xxx$index_vax_type <- recode(xxx$index_vax_type, "'Don’t know' = NA")
+
+# vaccinations and timing of symptom onset
+t2 <- tbl_summary(
+  data = xxx, 
+  statistic = list(
+    num_vax ~ "{n} ({p})",
+    dose_vax ~ "{n} ({p})",
+    index_vax_type ~ "{n} ({p})",
+    postvax_days_anysympt ~ "{median} ({p25}-{p75})",
+    postvax_days_severesympt ~ "{median} ({p25}-{p75})"),
+  label = list(
+    num_vax ~ "Number of Vaccinations Taken",
+    dose_vax ~ "Index Vaccination Dose",
+    index_vax_type ~ "Index Vaccination Type",
+    postvax_days_anysympt ~ "Days between index vaccination and onset of any symptoms",
+    postvax_days_severesympt ~ "Days between index vaccination and onset of severe symptoms"),
+  missing_text = "Missing",
+  include = c(num_vax, index_vax_type, postvax_days_anysympt, 
+              postvax_days_severesympt, dose_vax)) %>%
+  modify_footnote(all_stat_cols() ~ "median (IQR) for Days between index vaccination and onset of any/severe symptoms; n/N, % for all other variables") %>%
+  modify_caption("Table 2. Vaccinations and Timing of Symptom Onset")
+
+# convert t2 to exportable format
+export_table2 <- as_gt(t2)
+
+# export table to Word
+file_path <- "xxx"
+gtsave(export_table2, file = file_path)
+
+
+# index vaccination for LC
+xxx$covid1_date <- as.Date(substring(xxx$covid1_date, first = 0, last = 10))
+xxx$end <- as.Date(substring(xxx$end, first = 0, last = 10))
+xxx$index_infection <- NA
+
+complete_covid_dates <- subset(xxx, !is.na(covid1_date))
+table(complete_covid_dates$tested_positive)
+
+# define infection periods, exclude one person who reported LC before infection
+pre_delta <- interval(ymd("2019-12-01"), ymd("2021-06-25"))
+delta <- interval(ymd("2021-06-26"), ymd("2021-12-24"))
+omicron <- interval(ymd("2021-12-25"), ymd("2022-06-25"))
+post_omicron <- interval(ymd("2022-06-26"), ymd("2023-08-01"))
+
+for (i in 1:length(xxx$covid1_date)){
+  if (is.na(xxx$covid1_date[i]))
+  {
+    xxx$index_infection[i] <- NA
+  }
+  else if (ymd(xxx$covid1_date[i]) %within% pre_delta)
+  {
+    xxx$index_infection[i] <- 'Pre-Delta'
+  }
+  else if (ymd(xxx$covid1_date[i]) %within% delta)
+  {
+    xxx$index_infection[i] <- 'Delta'
+  }
+  else if (ymd(xxx$covid1_date[i]) %within% omicron)
+  {
+    xxx$index_infection[i] <- 'Omicron'
+  }
+  else if (ymd(xxx$covid1_date[i]) %within% post_omicron)
+  {
+    xxx$index_infection[i] <- 'Post-Omicron'
+  }
+  else
+  {
+    xxx$index_infection[i] <- NA
+  }
+}
+
+xxx$time_to_completion <- as.vector(difftime(xxx$end, xxx$covid1_date, units = "days"))
+xxx$end_ym <- format(xxx$end, "%Y-%m")
+
+# create a distribution of survey completion dates
+date_distribution <- table(xxx$end_ym)
+summary(xxx$time_to_completion)
+
+# plot the distribution as a bar chart
+barplot(date_distribution, xlab = "Completion Date", ylab = "Frequency", main = "Survey Completion Date Distribution",
+        cex.names = 0.8)
+par(las = 1)
+
+# infection and timing of symptom onset
+t2_lc <- tbl_summary(
+  data = xxx, 
+  statistic = list(
+    index_infection ~ "{n} ({p})",
+    hospitalized_covid ~ "{n} ({p})",
+    time_to_completion ~ "{median} ({p25}-{p75})",
+    covid_number ~ "{median} ({p25}-{p75})",
+    covid_vaccine ~ "{n} ({p})"),
+  type = list(covid_number ~ 'continuous'),
+  label = list(
+    index_infection ~ "Index SARS-CoV-2 infection time period",
+    hospitalized_covid ~ "Hospitalized for COVID-related conditions",
+    time_to_completion ~ "Number of days between infection and taking the symptom survey",
+    covid_number ~ "Number of times infected by SARS-CoV-2",
+    covid_vaccine ~ "Have received at least one COVID vaccine"),
+  missing_text = "Missing",
+  include = c(index_infection, hospitalized_covid, time_to_completion, 
+              covid_number, covid_vaccine)) %>%
+  modify_footnote(all_stat_cols() ~ "median (IQR) for Time to complete survey and number of COVID infections; n/N, % for all other variables") %>%
+  modify_caption("Table 2. SARS-CoV-2 infection characteristics")
+
+# convert t2_lc to exportable format
+export_table2_lc <- as_gt(t2)
+
+# export table to Word
+file_path <- "xxx"
+gtsave(export_table2_lc, file = file_path)
+```
+
+
+template code to generate symptom, comorbidities, new-onset conditions, and treatments tables
+```{r}
+# data must be organized in a format like this for kable to work as intended
+symp_data <- fread('/Volumes/LISTEN_Study/analysis/wu/lc_Table2.csv') 
+comorb_data <- fread('/Volumes/LISTEN_Study/analysis/wu/lc_Table3.csv')
+new_diag_data <- fread('/Volumes/LISTEN_Study/analysis/wu/lc_Table4.csv')
+treats_data <- fread('/Volumes/LISTEN_Study/analysis/wu/lc_Table6.csv')
+
+# generate table to be copied and pasted into word/docs and show up formatted as a table
+kable(symp_data_lc[, c("Symptom Full Name", "Symptom Code", "n", "%")], 
+      col.names = c("Symptom", "Code", "n", "%"), 
+      align = c("l", "c", "c", "c"),
+      format = "markdown") # symptoms
+
+kable(comorb_data_lc[, c("Comorbidity", "Code", "n", "%")], 
+      col.names = c("Comorbidity", "Code", "n", "%"), 
+      align = c("l", "c", "c", "c"),
+      format = "markdown") # comorbidities
+
+kable(new_diag_data_lc[, c("New Diagnosis", "Code", "n", "%")], 
+      col.names = c("New-onset Condition", "Code", "n", "%"), 
+      align = c("l", "c", "c", "c"),
+      format = "markdown") # new-onset conditions
+
+kable(treats_data_lc[, c("Treatment", "Code", "Category", "n", "%")], 
+      col.names = c("Treatment", "Code", "Category", "n", "%"), 
+      align = c("l", "c", "c", "c", "c"),
+      format = "markdown") # treatments
+```
+
+template code to generate patient experiences table
+```{r}
+# define patient experience columns
+col_names <- c("nonmed_fearful", "nonmed_anxiety", "nonmed_worries", "nonmed_uneasy", "nonmed_worthless", "nonmed_helpless", "nonmed_depressed", "nonmed_hopeless", "nonmed_fatigued", "nonmed_tired", "nonmed_rundown", "nonmed_sleep2", "nonmed_painactivities", "nonmed_closepeople", "nonmed_helpneighbors", "nonmed_someonetohelp", "nonmed_companionship", "nonmed_leftout", "nonmed_isolated", "nonmed_lonely", "nonmed_livingsituation", "nonmed_foodinsecurity", "nonmed_unmetmedneedstransport", "nonmed_unmetnonmedneedstransport")
+
+# convert patient experience columns to factors
+xxx <- xxx%>%
+  mutate_at(vars(col_names), factor)
+
+# replace empty strings with NA in patient experience columns and fix misspellings
+xxx[, (col_names) := lapply(.SD, function(x) ifelse(x == "", NA, x)), .SDcols = col_names]
+xxx[, (col_names) := lapply(.SD, function(x) ifelse(x == "Sometimess", "Sometimes", x)), .SDcols = col_names]
+
+# define variable labels
+variable_labels <- c(
+  "nonmed_fearful" = "Felt fearful",
+  "nonmed_anxiety" = "Felt anxious",
+  "nonmed_worries" = "Felt worried",
+  "nonmed_uneasy" = "Felt unease",
+  "nonmed_worthless" = "Felt worthless",
+  "nonmed_helpless" = "Felt helpless",
+  "nonmed_depressed" = "Felt depressed",
+  "nonmed_hopeless" = "Felt hopeless",
+  "nonmed_fatigued" = "Felt fatigued",
+  "nonmed_tired" = "Felt tired",
+  "nonmed_rundown" = "Felt rundown",
+  "nonmed_sleep2" = "Had difficulty falling asleep",
+  "nonmed_painactivities" = "Pain interfered with activities",
+  "nonmed_closepeople" = "Number of close people to rely on for help",
+  "nonmed_helpneighbors" = "Had neighbors willing to help",
+  "nonmed_someonetohelp" = "Had someone to help",
+  "nonmed_companionship" = "Lacked companionship",
+  "nonmed_leftout" = "Felt leftout",
+  "nonmed_isolated" = "Felt isolated",
+  "nonmed_lonely" = "Felt lonely",
+  "nonmed_livingsituation" = "Living situation",
+  "nonmed_foodinsecurity" = "Food insecurity",
+  "nonmed_unmetmedneedstransport" = "Unmet medical transport",
+  "nonmed_unmetnonmedneedstransport" = "Unmet non-medical transport"
+)
+
+# generate table for patient experiences
+t4 <- tbl_summary(
+  data = xxx, 
+  statistic = list(
+    nonmed_fearful ~ "{n} ({p})",
+    nonmed_anxiety ~ "{n} ({p})",
+    nonmed_worries ~ "{n} ({p})",
+    nonmed_uneasy ~ "{n} ({p})",
+    nonmed_worthless ~ "{n} ({p})",
+    nonmed_helpless ~ "{n} ({p})",
+    nonmed_depressed ~ "{n} ({p})",
+    nonmed_hopeless ~ "{n} ({p})",
+    nonmed_fatigued ~ "{n} ({p})",
+    nonmed_tired ~ "{n} ({p})",
+    nonmed_rundown ~ "{n} ({p})",
+    nonmed_sleep2 ~ "{n} ({p})",
+    nonmed_painactivities ~ "{n} ({p})",
+    nonmed_closepeople ~ "{n} ({p})",
+    nonmed_helpneighbors ~ "{n} ({p})",
+    nonmed_someonetohelp ~ "{n} ({p})",
+    nonmed_companionship ~ "{n} ({p})",
+    nonmed_leftout ~ "{n} ({p})",
+    nonmed_isolated ~ "{n} ({p})",
+    nonmed_lonely ~ "{n} ({p})",
+    nonmed_livingsituation ~ "{n} ({p})",
+    nonmed_foodinsecurity ~ "{n} ({p})",
+    nonmed_unmetmedneedstransport ~ "{n} ({p})",
+    nonmed_unmetnonmedneedstransport ~ "{n} ({p})"),
+  label = list(
+    nonmed_fearful ~ "Felt fearful",
+    nonmed_anxiety ~ "Felt anxious",
+    nonmed_worries ~ "Felt worried",
+    nonmed_uneasy ~ "Felt unease",
+    nonmed_worthless ~ "Felt worthless",
+    nonmed_helpless ~ "Felt helpless",
+    nonmed_depressed ~ "Felt depressed",
+    nonmed_hopeless ~ "Felt hopeless",
+    nonmed_fatigued ~ "Felt fatigued",
+    nonmed_tired ~ "Felt tired",
+    nonmed_rundown ~ "Felt rundown",
+    nonmed_sleep2 ~ "Had difficulty falling asleep",
+    nonmed_painactivities ~ "Pain interfered with activities",
+    nonmed_closepeople ~ "Number of close people to rely on for help",
+    nonmed_helpneighbors ~ "Had neighbors willing to help",
+    nonmed_someonetohelp ~ "Had someone to help",
+    nonmed_companionship ~ "Lacked companionship",
+    nonmed_leftout ~ "Felt leftout",
+    nonmed_isolated ~ "Felt isolated",
+    nonmed_lonely ~ "Felt lonely",
+    nonmed_livingsituation ~ "Living situation",
+    nonmed_foodinsecurity ~ "Food insecurity",
+    nonmed_unmetmedneedstransport ~ "Unmet medical transport",
+    nonmed_unmetnonmedneedstransport ~ "Unmet non-medical transport"),
+  missing_text = "Missing",
+  include = c(
+    nonmed_fearful, nonmed_anxiety, nonmed_worries, nonmed_uneasy, nonmed_worthless, 
+    nonmed_helpless, nonmed_depressed, nonmed_hopeless, nonmed_fatigued, nonmed_tired, 
+    nonmed_rundown, nonmed_sleep2, nonmed_painactivities, nonmed_closepeople, 
+    nonmed_helpneighbors, nonmed_someonetohelp, nonmed_companionship, nonmed_leftout, 
+    nonmed_isolated, nonmed_lonely, nonmed_livingsituation, nonmed_foodinsecurity, 
+    nonmed_unmetmedneedstransport, nonmed_unmetnonmedneedstransport)
+) %>%
+  modify_footnote(all_stat_cols() ~ "n/N, % for all variables") %>%
+  modify_caption("Table 4. Patient experience frequencies")
+
+# Convert t1 to exportable format
+export_table4 <- as_gt(t4)
+
+# Export table to Word
+file_path <- "xxx"
+gtsave(export_table4, file = file_path)
+```
+
+template code to generate health status table
+```{r}
+# generate health status table
+t7 <- tbl_summary(
+  data = xxx, 
+  statistic = list(
+    health_vas ~ "{median} ({p25}-{p75})",
+    nonmed_worstdays ~ "{median} ({p25}-{p75})",
+    health_new ~ "{n} ({p})"),
+  label = list(
+    health_vas ~ "Euro-QoL visual analogue scale (0-100)",
+    nonmed_worstdays ~ "How bad your PVS or other symptoms are (0 to 100) on your worst days?",
+    health_new ~ "Self-reported health status"),
+  missing_text = "Missing",
+  include = c(health_vas, nonmed_worstdays, health_new)
+) %>%
+  modify_footnote(all_stat_cols() ~ "median (IQR) EQ-VAS and symptom severity; n/N, % for self-reported health status") %>%
+  modify_caption("Table 7. Health Status")
+
+# convert t7 to exportable format
+export_table1 <- as_gt(t1)
+
+# export table to Word
+file_path <- "xxx"
+gtsave(export_table7, file = file_path)
+```
+
